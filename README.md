@@ -46,16 +46,16 @@ Load them however you prefer (e.g. `export $(cat .env | xargs)`); BenchIQ reads 
 
 ## Deploy to Render
 
-The repo includes a [Render Blueprint](render.yaml) that runs everything (API + web app) as one web service with a 1 GB persistent disk for the database.
+The repo includes a [Render Blueprint](render.yaml) that runs everything (API + web app) as one **free** web service.
 
 1. In the Render dashboard choose **New → Blueprint** and connect this GitHub repo (branch `main`).
-2. Render reads `render.yaml` and proposes a web service called `benchiq` on the **Starter** plan with a disk mounted at `/var/data`. Click **Apply**.
+2. Render reads `render.yaml` and proposes a free web service called `benchiq`. Click **Apply**.
 3. Optional: when asked for `ANTHROPIC_API_KEY`, paste a key to turn on the AI Coach (leave blank to skip; you can add it later under **Environment**).
 4. Wait for the first deploy (about 2–3 minutes), then open the `https://<name>.onrender.com` link and click **Explore the demo team**.
 
-The database is created and seeded on the first start and kept on the disk across deploys and restarts. Every push to `main` redeploys automatically.
+Every push to `main` redeploys automatically.
 
-**Free plan:** Render's free plan has no persistent disks. To try it for free, remove the `disk:` block and change `plan: starter` to `plan: free`. The app works, but all data resets to the demo data whenever the service restarts or sleeps.
+**Free-plan limits:** free services sleep after about 15 minutes without visitors (the next visit takes ~30–60 seconds to wake up), and they have no persistent disk. The database is rebuilt with the demo data on every restart, redeploy or wake-up, so accounts and changes you make are **not kept**. To keep data, switch to the Starter plan and add a disk (instructions are in the comments at the top of `render.yaml`).
 
 **Netlify:** Netlify only hosts static files, so it can't run the BenchIQ server on its own. Use the Render link above.
 
