@@ -1,0 +1,22 @@
+# Render Blueprint: one web service runs the API and serves the built web app.
+# Deploy: Render dashboard → New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: benchiq
+    runtime: node
+    plan: starter # persistent disks need a paid plan; see README for the free option
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: BENCHIQ_DB
+        value: /var/data/benchiq.db
+      - key: TRUST_PROXY
+        value: "1"
+      - key: ANTHROPIC_API_KEY
+        sync: false # optional: enter it in the dashboard to turn on the AI Coach
+    disk:
+      name: benchiq-data
+      mountPath: /var/data
+      sizeGB: 1
