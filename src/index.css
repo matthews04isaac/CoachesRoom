@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (RGB triplets so Tailwind can apply opacity). */
+:root,
+[data-theme='light'] {
+  --bg: 244 244 245;
+  --surface: 255 255 255;
+  --raised: 248 248 249;
+  --line: 226 226 230;
+  --ink: 20 20 23;
+  --muted: 92 92 102;
+  --faint: 140 140 150;
+  --accent: 213 22 40;
+  --accent-ink: 255 255 255;
+  --good: 22 150 90;
+  --warn: 196 122 0;
+  --info: 37 99 235;
+  --rink-ice: 250 251 253;
+  --rink-line: 120 130 145;
+  color-scheme: light;
+}
+[data-theme='dark'] {
+  --bg: 12 12 14;
+  --surface: 22 22 25;
+  --raised: 31 31 35;
+  --line: 44 44 50;
+  --ink: 240 240 243;
+  --muted: 160 160 170;
+  --faint: 110 110 120;
+  --accent: 229 35 52;
+  --accent-ink: 255 255 255;
+  --good: 52 199 120;
+  --warn: 240 170 40;
+  --info: 96 150 255;
+  --rink-ice: 28 31 36;
+  --rink-line: 110 118 132;
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+}
+h1, h2, h3 { @apply font-display tracking-wide; }
+::selection { background: rgb(var(--accent) / 0.3); }
+
+@layer components {
+  .card { @apply bg-surface border border-line rounded-xl; }
+  .input {
+    @apply w-full rounded-lg border border-line bg-raised px-3 py-2 text-sm text-ink placeholder:text-faint
+      focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60 disabled:opacity-60;
+  }
+  .label { @apply block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium; }
+  .link { @apply text-accent hover:underline underline-offset-2; }
+  .scroll-thin { scrollbar-width: thin; }
+}
+
+/* Markdown-ish article body */
+.prose-biq h2 { @apply text-xl font-semibold mt-6 mb-2 text-ink; }
+.prose-biq p { @apply my-3 leading-relaxed text-ink/90; }
+.prose-biq ul, .prose-biq ol { @apply my-3 pl-5 space-y-1.5; }
+.prose-biq ul { list-style: disc; }
+.prose-biq ol { list-style: decimal; }
+.prose-biq strong { @apply text-ink font-semibold; }
+
+/* Print: used for practice plans & player reports ("Print / Save as PDF"). */
+@media print {
+  @page { margin: 14mm; }
+  :root, [data-theme='dark'] {
+    --bg: 255 255 255; --surface: 255 255 255; --raised: 255 255 255; --line: 210 210 215;
+    --ink: 10 10 12; --muted: 70 70 80; --faint: 120 120 130; --rink-ice: 255 255 255; --rink-line: 90 100 115;
+  }
+  .no-print { display: none !important; }
+  .print-break { break-inside: avoid; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
