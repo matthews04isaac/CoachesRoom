@@ -10,6 +10,7 @@ import { teamRoutes, teamsRoutes } from './routes/team.ts';
 import { coachingRoutes } from './routes/coaching.ts';
 import { tacticsRoutes } from './routes/tactics.ts';
 import { aiRoutes, aiStatusRoutes } from './routes/ai.ts';
+import { videoRoutes } from './routes/video.ts';
 
 export function createApp(db: DB, opts: { staticDir?: string } = {}) {
   const app = express();
@@ -28,6 +29,7 @@ export function createApp(db: DB, opts: { staticDir?: string } = {}) {
   team.use(teamRoutes(db));
   team.use(coachingRoutes(db));
   team.use(tacticsRoutes(db));
+  team.use(videoRoutes(db));
   team.use('/ai', aiRoutes(db));
   app.use('/api/teams/:teamId', requireUser(db), team);
 

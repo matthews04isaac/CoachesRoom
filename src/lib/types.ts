@@ -165,6 +165,7 @@ export interface Observation {
   description: string;
   priority_id: number | null;
   priority_title?: string | null;
+  video_ref?: string | null;
   players: { id: number; first_name: string; last_name: string; number: number | null }[];
   game?: { id: number; opponent: string; played_at: string };
   opponent?: string;
@@ -184,6 +185,7 @@ export interface Game {
   shots_against: number | null;
   overtime: number;
   summary: string;
+  video_url?: string | null;
   result: 'W' | 'L' | 'OTL' | 'T' | null;
   issue_count?: number;
   positive_count?: number;
