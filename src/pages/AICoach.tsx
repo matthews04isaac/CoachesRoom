@@ -266,7 +266,7 @@ function AIDisabled() {
         <Card title="The AI Coach isn’t configured on this server" icon={<KeyRound className="h-4 w-4" />}>
           <div className="space-y-3 text-sm text-muted">
             <p>
-              The AI Coach uses Anthropic’s Claude API. To turn it on, set <code className="rounded bg-raised px-1 text-ink">ANTHROPIC_API_KEY</code> in the server environment (see <code className="rounded bg-raised px-1 text-ink">.env.example</code>) and restart BenchIQ.
+              The AI Coach runs on Google’s Gemini API, which has a free tier. Create a key at <strong className="text-ink">aistudio.google.com</strong> (Get API key), then set <code className="rounded bg-raised px-1 text-ink">GEMINI_API_KEY</code> in the server environment — on Render: your service → Environment — and restart. Anthropic’s Claude also works: set <code className="rounded bg-raised px-1 text-ink">ANTHROPIC_API_KEY</code> instead.
             </p>
             <p>When enabled, it can draft practices from prompts like “Our U15 team is struggling with breakouts — create a 60-minute practice”, using your roster, evaluations, game observations, priorities and drill library. Every plan is shown as an editable draft that you must approve before it’s saved.</p>
             <Button size="sm" onClick={() => ctx.refetch()} loading={ctx.isFetching}>

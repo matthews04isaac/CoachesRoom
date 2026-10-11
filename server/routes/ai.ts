@@ -1,21 +1,13 @@
 import { Router, type Request } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
 import { q, type DB } from '../db.ts';
 import { bad, HttpError } from '../validate.ts';
 import { FOCUS_AREA_LABELS, type FocusArea } from '../../shared/domain.ts';
 import { focusTrend, playerEvalSummary, recurringIssues, teamRecord, trendSignal } from '../insights.ts';
 import { teamCategories } from './team.ts';
 
-const MODEL = process.env.BENCHIQ_AI_MODEL || 'claude-opus-5-5';
-let client: Anthropic | null = null;
+import { aiProvider, type ChatMessage } from '../ai-providers.ts';
 
-export function aiEnabled() {
-  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
-}
-function getClient() {
-  if (!client) client = new Anthropic();
-  return client;
-}
+export const aiEnabled = () => aiProvider() !== null;
 
 const SYSTEM_PROMPT = `You are BenchIQ Coach, an assistant for ice hockey coaches inside the BenchIQ coaching platform.
 
@@ -127,7 +119,10 @@ export function extractPracticeDraft(db: DB, teamId: number, text: string): { re
 
 export function aiStatusRoutes() {
   const r = Router();
-  r.get('/status', (_req, res) => res.json({ enabled: aiEnabled(), model: aiEnabled() ? MODEL : null }));
+  r.get('/status', (_req, res) => {
+    const p = aiProvider();
+    res.json({ enabled: !!p, provider: p?.name ?? null, model: p?.model ?? null });
+  });
   return r;
 }
 
@@ -139,46 +134,30 @@ export function aiRoutes(db: DB) {
   });
 
   r.post('/chat', async (req: Request, res) => {
-    if (!aiEnabled()) throw new HttpError(503, 'The AI Coach is not configured. Set ANTHROPIC_API_KEY on the server to enable it.');
+    const provider = aiProvider();
+    if (!provider) throw new HttpError(503, 'The AI Coach is not configured. Set GEMINI_API_KEY (or ANTHROPIC_API_KEY) on the server to enable it.');
     const teamId = Number(req.params.teamId);
     const raw = req.body.messages;
     if (!Array.isArray(raw) || !raw.length || raw.length > 40) throw bad('Provide between 1 and 40 messages');
-    const messages: Anthropic.Beta.BetaMessageParam[] = raw.map((m: any) => {
+    const messages: ChatMessage[] = raw.map((m: any) => {
       if ((m.role !== 'user' && m.role !== 'assistant') || typeof m.content !== 'string' || !m.content.trim()) throw bad('Invalid message');
       return { role: m.role, content: m.content.slice(0, 12000) };
     });
     if (messages[messages.length - 1].role !== 'user') throw bad('The last message must be from the coach');
 
-    const system: Anthropic.Beta.BetaTextBlockParam[] = [{ type: 'text', text: SYSTEM_PROMPT }];
+    const system = [SYSTEM_PROMPT];
     if (req.body.use_team_data !== false) {
-      system.push({ type: 'text', text: `Current BenchIQ team data (authorised by the coach for this conversation):\n\n${teamContext(db, teamId)}` });
+      system.push(`Current BenchIQ team data (authorised by the coach for this conversation):\n\n${teamContext(db, teamId)}`);
     } else {
-      system.push({ type: 'text', text: 'The coach has not shared team data for this conversation. Give general advice and ask for details where needed.' });
+      system.push('The coach has not shared team data for this conversation. Give general advice and ask for details where needed.');
     }
 
-    try {
-      const response = await getClient().beta.messages.create({
-        model: MODEL,
-        max_tokens: 16000,
-        system,
-        messages,
-        output_config: { effort: 'medium' },
-        // Re-run a safety-classifier decline on Anthropic's recommended fallback model.
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-      });
-      if (response.stop_reason === 'refusal') {
-        return res.json({ reply: 'Sorry — I can’t help with that request. Try rephrasing it as a coaching question.', draft: null });
-      }
-      const text = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-      const { reply, draft } = extractPracticeDraft(db, teamId, text);
-      res.json({ reply, draft, truncated: response.stop_reason === 'max_tokens', model: response.model });
-    } catch (e) {
-      if (e instanceof Anthropic.AuthenticationError) throw new HttpError(502, 'The AI service rejected the API key. Check ANTHROPIC_API_KEY.');
-      if (e instanceof Anthropic.RateLimitError) throw new HttpError(429, 'The AI service is rate limited. Try again in a minute.');
-      if (e instanceof Anthropic.APIError) throw new HttpError(502, `AI service error: ${e.message}`);
-      throw e;
+    const result = await provider.chat(system, messages);
+    if (result.blocked && !result.text) {
+      return res.json({ reply: 'Sorry — I can’t help with that request. Try rephrasing it as a coaching question.', draft: null });
     }
+    const { reply, draft } = extractPracticeDraft(db, teamId, result.text);
+    res.json({ reply, draft, truncated: result.truncated, model: result.model });
   });
 
   return r;

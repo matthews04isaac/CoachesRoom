@@ -1,22 +1,27 @@
 # Render Blueprint: one web service runs the API and serves the built web app.
 # Deploy: Render dashboard → New → Blueprint → pick this repo.
+#
+# Free plan: Render's free web services have no persistent disk, so the
+# SQLite database lives on the service's temporary filesystem. It is re-created
+# with the demo data whenever the service restarts, redeploys, or wakes from
+# sleep (free services sleep after ~15 minutes without visitors).
+# To keep data permanently, switch to a paid plan and add a disk:
+#   plan: starter
+#   disk: { name: benchiq-data, mountPath: /var/data, sizeGB: 1 }
+# and set BENCHIQ_DB to /var/data/benchiq.db.
 services:
   - type: web
     name: benchiq
     runtime: node
-    plan: starter # persistent disks need a paid plan; see README for the free option
+    plan: free
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       - key: BENCHIQ_DB
-        value: /var/data/benchiq.db
+        value: data/benchiq.db
       - key: TRUST_PROXY
         value: "1"
-      - key: ANTHROPIC_API_KEY
-        sync: false # optional: enter it in the dashboard to turn on the AI Coach
-    disk:
-      name: benchiq-data
-      mountPath: /var/data
-      sizeGB: 1
+      - key: GEMINI_API_KEY
+        sync: false # optional: free key from aistudio.google.com turns on the AI Coach
