@@ -20,7 +20,7 @@ This document records the decisions made while building the first release, so fu
 | Icons | lucide-react | Consistent stroke icon set |
 | API | Express 5 on Node 22, run with `tsx` | Minimal, well known; async errors handled natively |
 | Database | SQLite via built-in `node:sqlite` | No native build step or server; easy to swap to Postgres later (plain SQL, no ORM lock-in) |
-| AI | Anthropic SDK (`@anthropic-ai/sdk`), model `claude-opus-5-5` (override with `BENCHIQ_AI_MODEL`) | Server-side only; key never reaches the browser |
+| AI | Google Gen AI SDK (`@google/genai`, default model `gemini-flash-latest`, free tier) or Anthropic SDK (`@anthropic-ai/sdk`, `claude-opus-5-5`) | Chosen by which key is set; server-side only, keys never reach the browser |
 
 Shared domain constants live in `shared/domain.ts` and are imported by both client and server, so a focus area or diagram type cannot drift between them.
 
@@ -67,10 +67,10 @@ Player evaluations feed the same loop: the lowest-rated skills drive player dril
 
 ## AI Coach
 
-- `POST /api/teams/:id/ai/chat` sends the conversation to Claude with a hockey-coaching system prompt. When the coach leaves **"Share team data"** on (the default, visible toggle), a compact factual snapshot is appended: roster with latest ratings and deltas, active priorities with trend, recurring issues, the last five games with observations, and the drill library with IDs. `GET /api/teams/:id/ai/context` shows exactly what is shared (the AI page offers a preview even when AI is disabled).
+- `POST /api/teams/:id/ai/chat` sends the conversation to the configured model (Gemini or Claude, see `server/ai-providers.ts`) with a hockey-coaching system prompt. When the coach leaves **"Share team data"** on (the default, visible toggle), a compact factual snapshot is appended: roster with latest ratings and deltas, active priorities with trend, recurring issues, the last five games with observations, and the drill library with IDs. `GET /api/teams/:id/ai/context` shows exactly what is shared (the AI page offers a preview even when AI is disabled).
 - Practice plans are requested as a fenced `benchiq-practice` JSON block. The server parses and **sanitises** it (unknown drill IDs → custom segments, unknown priority IDs dropped, durations clamped) and returns it separately from the prose.
 - The client renders the plan as an **editable draft**. Nothing is persisted until the coach clicks *Approve & save as draft practice*, which creates a `draft` practice with `source = 'ai'` for further editing in the planner.
-- Requests use adaptive thinking at `medium` effort and server-side refusal fallbacks (`fallbacks: "default"`); refusals and API errors are surfaced as friendly messages. Without `ANTHROPIC_API_KEY` the endpoint returns 503 and the UI explains how to enable it.
+- On Claude, requests use `medium` effort and server-side refusal fallbacks (`fallbacks: "default"`). On Gemini, safety blocks and the free tier's rate limits (HTTP 429) are surfaced as friendly messages. Without `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` the endpoint returns 503 and the UI explains how to enable it.
 - No automated video analysis exists, and the assistant is instructed not to invent statistics or observations.
 
 ## Security

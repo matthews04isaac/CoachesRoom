@@ -37,8 +37,11 @@ The database (`data/benchiq.db`) is created and seeded automatically on first st
 | --- | --- | --- |
 | `PORT` | `4000` | API / production server port |
 | `BENCHIQ_DB` | `data/benchiq.db` | SQLite file location |
-| `ANTHROPIC_API_KEY` | – | Enables the AI Coach. Without it the AI page explains how to enable it; everything else works. |
-| `BENCHIQ_AI_MODEL` | `claude-opus-5-5` | Model used by the AI Coach |
+| `GEMINI_API_KEY` | – | Enables the AI Coach with Google Gemini (free tier; create a key at aistudio.google.com). Without an AI key the AI page explains how to enable it; everything else works. |
+| `GEMINI_MODEL` | `gemini-flash-latest` | Gemini model used by the AI Coach |
+| `ANTHROPIC_API_KEY` | – | Alternative: run the AI Coach on Anthropic Claude (paid) |
+| `BENCHIQ_AI_MODEL` | `claude-opus-5-5` | Claude model, when using Anthropic |
+| `BENCHIQ_AI_PROVIDER` | – | `gemini` or `anthropic`, to choose when both keys are set (Gemini wins by default) |
 | `BENCHIQ_DISABLE_DEMO` | – | Set to `1` to disable one-click demo login |
 | `TRUST_PROXY` | – | Set to `1` behind a TLS-terminating proxy so session cookies are marked `Secure` |
 
@@ -50,7 +53,7 @@ The repo includes a [Render Blueprint](render.yaml) that runs everything (API + 
 
 1. In the Render dashboard choose **New → Blueprint** and connect this GitHub repo (branch `main`).
 2. Render reads `render.yaml` and proposes a free web service called `benchiq`. Click **Apply**.
-3. Optional: when asked for `ANTHROPIC_API_KEY`, paste a key to turn on the AI Coach (leave blank to skip; you can add it later under **Environment**).
+3. Optional: when asked for `GEMINI_API_KEY`, paste a free Google AI Studio key to turn on the AI Coach (leave blank to skip; you can add it later under **Environment**).
 4. Wait for the first deploy (about 2–3 minutes), then open the `https://<name>.onrender.com` link and click **Explore the demo team**.
 
 Every push to `main` redeploys automatically.
@@ -74,7 +77,7 @@ Every push to `main` redeploys automatically.
 | Player development: profiles, customisable 1–5 evaluation categories, history, radar & progress charts, strengths/weaknesses, goals linked to priorities, notes, tagged game observations, rule-based drill recommendations, printable evaluation report | ✅ |
 | Game review: results, tactical observations (issue / positive) by breakout, forecheck, D-coverage, neutral zone, special teams, individual; player tagging; recurring-issue tracker; convert observations into priorities | ✅ |
 | Development priorities: team or player-level, linked observations, trend (before vs since), recommended drills → add to next practice, linked practices and goals | ✅ |
-| AI Coach (Claude): chat grounded in team data (opt-in per conversation), practice generation as an **editable draft that the coach must approve** before saving | ✅ with `ANTHROPIC_API_KEY` |
+| AI Coach (Google Gemini, or Anthropic Claude): chat grounded in team data (opt-in per conversation), practice generation as an **editable draft that the coach must approve** before saving | ✅ with `GEMINI_API_KEY` (free) or `ANTHROPIC_API_KEY` |
 | Coaching library: 16 articles across the 8 required categories, search, tips, team-added resources with YouTube/Vimeo embeds | ✅ |
 | Calendar: month grid + mobile agenda, practices & games pulled in automatically, tournaments/meetings/other events | ✅ |
 | Light / dark / system theme, responsive layouts, JSON data export | ✅ |
@@ -94,7 +97,8 @@ server/
   insights.ts            Connected-coaching logic: trends, recurring issues, drill recommendations
   routes/                auth · team (teams, staff, roster, evaluations, calendar, dashboard)
                          coaching (drills, practices, games, observations, priorities)
-                         tactics (systems, playbook, diagrams, library) · ai (Claude)
+                         tactics (systems, playbook, diagrams, library) · ai (Gemini / Claude)
+  ai-providers.ts        Google Gemini and Anthropic Claude clients behind one interface
   seed.ts, seed-library.ts  Demo team + BenchIQ drill/system/article library
   api.test.ts            API tests
 src/

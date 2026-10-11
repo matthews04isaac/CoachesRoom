@@ -23,5 +23,5 @@ services:
         value: data/benchiq.db
       - key: TRUST_PROXY
         value: "1"
-      - key: ANTHROPIC_API_KEY
-        sync: false # optional: enter it in the dashboard to turn on the AI Coach
+      - key: GEMINI_API_KEY
+        sync: false # optional: free key from aistudio.google.com turns on the AI Coach

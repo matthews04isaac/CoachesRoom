@@ -150,7 +150,7 @@ function EvalCategories() {
 
 function DataAndAI() {
   const { team } = useTeam();
-  const ai = useQuery<{ enabled: boolean; model: string | null }>({ queryKey: ['ai-status'], queryFn: () => api.get('/ai/status') });
+  const ai = useQuery<{ enabled: boolean; provider: string | null; model: string | null }>({ queryKey: ['ai-status'], queryFn: () => api.get('/ai/status') });
   return (
     <Card title="Data & integrations">
       <div className="space-y-4 text-sm">
@@ -166,7 +166,7 @@ function DataAndAI() {
         <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="font-medium">AI Coach</div>
-            <div className="text-muted">{ai.data?.enabled ? `Enabled · model ${ai.data.model}` : 'Disabled — set ANTHROPIC_API_KEY on the server to enable.'}</div>
+            <div className="text-muted">{ai.data?.enabled ? `Enabled · ${ai.data.provider === 'gemini' ? 'Google Gemini' : 'Anthropic Claude'} · ${ai.data.model}` : 'Disabled — set GEMINI_API_KEY (free from Google AI Studio) on the server to enable.'}</div>
           </div>
           <Badge tone={ai.data?.enabled ? 'good' : 'neutral'}>{ai.data?.enabled ? 'Connected' : 'Not configured'}</Badge>
         </div>
@@ -185,7 +185,7 @@ const ROADMAP: [string, boolean][] = [
   ['Connected development priorities → drills → practices → trends', true],
   ['Tactical board, systems library & team playbook', true],
   ['Printable practice plans & player reports (Save as PDF)', true],
-  ['AI Coach (requires an Anthropic API key)', true],
+  ['AI Coach (requires a Google Gemini or Anthropic API key)', true],
   ['Animated tactical sequences', false],
   ['Video uploads, clip tagging & annotation', false],
   ['Automated video / tactical analysis', false],
