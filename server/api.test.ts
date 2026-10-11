@@ -162,3 +162,69 @@ test('diagram validation', () => {
   assert.equal(d.view, 'full');
   assert.equal(d.items[0].x, 10.1);
 });
+
+test('video: Drive / YouTube link parsing', async () => {
+  const { parseDriveId, parseYouTubeId } = await import('./video.ts');
+  assert.equal(parseDriveId('https://drive.google.com/file/d/1UDFEGKPgdHdQGeEd9UMftCpZzRIQgR5h/view?usp=sharing'), '1UDFEGKPgdHdQGeEd9UMftCpZzRIQgR5h');
+  assert.equal(parseDriveId('https://drive.google.com/open?id=1UDFEGKPgdHdQGeEd9UMftCpZzRIQgR5h'), '1UDFEGKPgdHdQGeEd9UMftCpZzRIQgR5h');
+  assert.equal(parseDriveId('https://evil.example.com/file/d/1UDFEGKPgdHdQGeEd9UMftCpZzRIQgR5h'), null);
+  assert.equal(parseYouTubeId('https://www.youtube.com/watch?v=jNQXAC9IVRw&t=10'), 'jNQXAC9IVRw');
+  assert.equal(parseYouTubeId('https://youtu.be/jNQXAC9IVRw'), 'jNQXAC9IVRw');
+  assert.equal(parseYouTubeId('https://youtube.com/shorts/jNQXAC9IVRw'), 'jNQXAC9IVRw');
+  assert.equal(parseYouTubeId('https://vimeo.com/123'), null);
+});
+
+test('video: model output is validated and sorted', async () => {
+  const { parseAnalysis, toSeconds } = await import('./video.ts');
+  assert.equal(toSeconds('1:02:03'), 3723);
+  assert.equal(toSeconds('12:40'), 760);
+  const out = parseAnalysis(
+    JSON.stringify({
+      summary: 'ok',
+      moments: [
+        { time: '10:00', focus_area: 'breakout', kind: 'issue', severity: 9, description: 'Winger left early', jersey_numbers: ['#11'], confidence: 'high' },
+        { time: '02:00', focus_area: 'forecheck', kind: 'positive', description: 'F1 angled well', confidence: 'weird' },
+        { time: '03:00', focus_area: 'not-a-category', kind: 'issue', description: 'dropped' },
+      ],
+    }),
+  );
+  assert.equal(out.moments.length, 2);
+  assert.equal(out.moments[0].seconds, 120);
+  assert.equal(out.moments[0].confidence, 'medium');
+  assert.equal(out.moments[1].severity, 3);
+  assert.deepEqual(out.moments[1].jersey_numbers, ['11']);
+});
+
+test('video: accepting a suggestion creates an observation; dismissing does not', async () => {
+  const c = client();
+  await c.post('/auth/signup', { name: 'Vid', email: 'vid@example.com', password: 'password123' });
+  const team = (await c.post('/teams', { name: 'Vid Team', division: 'U15', level: 'A', season: '2026–27' })).body;
+  const t = `/teams/${team.id}`;
+  const player = (await c.post(`${t}/players`, { first_name: 'Owen', last_name: 'F', number: 11, position: 'LW' })).body;
+  const game = (await c.post(`${t}/games`, { played_at: '2026-10-03T19:00', opponent: 'Rivals', goals_for: 2, goals_against: 1 })).body;
+  // Without a Gemini key, starting an analysis is refused with a clear message.
+  delete process.env.GEMINI_API_KEY;
+  const refused = await c.post(`${t}/games/${game.id}/video/analyze`, { url: 'https://youtu.be/jNQXAC9IVRw' });
+  assert.equal(refused.status, 503);
+  // Simulate a finished analysis.
+  const { q: query } = await import('./db.ts');
+  const id = query(db).insert('video_analyses', {
+    team_id: team.id,
+    game_id: game.id,
+    source: 'youtube',
+    source_url: 'https://youtu.be/jNQXAC9IVRw',
+    status: 'done',
+    suggestions: [
+      { time: '1:00', seconds: 60, focus_area: 'breakout', kind: 'issue', severity: 2, description: 'Left early', jersey_numbers: ['11'], confidence: 'high', status: 'pending' },
+      { time: '2:00', seconds: 120, focus_area: 'forecheck', kind: 'positive', severity: 2, description: 'Good angle', jersey_numbers: [], confidence: 'low', status: 'pending' },
+    ],
+  });
+  const kept = (await c.post(`${t}/video-analyses/${id}/suggestions/0`, { action: 'accept' })).body;
+  assert.equal(kept.suggestions[0].status, 'accepted');
+  await c.post(`${t}/video-analyses/${id}/suggestions/1`, { action: 'dismiss' });
+  assert.equal((await c.post(`${t}/video-analyses/${id}/suggestions/0`, { action: 'accept' })).status, 400, 'cannot accept twice');
+  const g = (await c.get(`${t}/games/${game.id}`)).body;
+  assert.equal(g.observations.length, 1);
+  assert.equal(g.observations[0].video_ref, 'youtube@60');
+  assert.equal(g.observations[0].players[0].id, player.id, 'jersey #11 mapped to the roster');
+});

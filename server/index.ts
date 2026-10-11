@@ -2,9 +2,11 @@ import { openDb } from './db.ts';
 import { createApp } from './app.ts';
 import { ensureSeeded } from './seed.ts';
 import { aiEnabled } from './routes/ai.ts';
+import { recoverInterruptedJobs } from './video.ts';
 
 const db = openDb();
 ensureSeeded(db);
+recoverInterruptedJobs(db);
 
 const port = Number(process.env.PORT ?? 4000);
 const app = createApp(db, { staticDir: process.env.NODE_ENV === 'production' ? 'dist' : undefined });

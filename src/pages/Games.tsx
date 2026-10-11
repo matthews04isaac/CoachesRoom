@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Flag, Plus, Target, Video } from 'lucide-react';
+import { Film, Flag, Plus, Target } from 'lucide-react';
 import { api } from '../lib/api';
 import { useTeam, useTeamMutation, useTeamQuery } from '../lib/session';
 import type { Game, Observation, Player, Priority, RecurringIssue } from '../lib/types';
 import { FOCUS_AREAS, FOCUS_AREA_LABELS, type FocusArea } from '../../shared/domain';
 import { fmtDate, fmtTime, todayStr } from '../lib/format';
-import { Badge, Button, Card, Empty, Field, Input, Modal, NotYet, PageHeader, ReadOnlyNote, ResultBadge, Select, Spinner, Tabs, Textarea } from '../components/ui';
+import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, ReadOnlyNote, ResultBadge, Select, Spinner, Tabs, Textarea } from '../components/ui';
 import { FocusBadge, StatusBadge, TrendBadge } from '../components/hockey';
 
 type Tab = 'games' | 'priorities' | 'issues';
@@ -93,10 +93,9 @@ function GamesList() {
       <Card title={`Results (${played.length})`} bodyClass="p-0">
         {played.length ? <ul className="divide-y divide-line">{played.map(row)}</ul> : <div className="p-4"><Empty icon={<Flag className="h-8 w-8" />} title="No games recorded yet" /></div>}
       </Card>
-      <NotYet phase="Phase 3">
-        <Video className="mr-1 inline h-3.5 w-3.5" />
-        Game video uploads, timestamped clips, drawing annotations and automated video analysis. Observations already reserve a field for linking to future video clips.
-      </NotYet>
+      <p className="flex items-center gap-1.5 text-xs text-muted">
+        <Film className="h-3.5 w-3.5" /> Open a game to add its video (Google Drive, YouTube or upload) and get AI-suggested observations.
+      </p>
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Plus, Target, Trash2, ThumbsUp, AlertTriangle, Video } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus, Target, Trash2, ThumbsUp, AlertTriangle, Film } from 'lucide-react';
 import { api } from '../lib/api';
 import { useTeam, useTeamMutation, useTeamQuery } from '../lib/session';
 import type { Game, Observation, Player, Priority } from '../lib/types';
 import { FOCUS_AREAS, FOCUS_AREA_LABELS, type FocusArea } from '../../shared/domain';
 import { fmtDateLong, fmtTime } from '../lib/format';
-import { Badge, Button, Card, ConfirmButton, ErrorNote, Field, Input, Modal, NotYet, ResultBadge, Select, Spinner, Textarea } from '../components/ui';
+import { Badge, Button, Card, ConfirmButton, ErrorNote, Field, Input, Modal, ResultBadge, Select, Spinner, Textarea } from '../components/ui';
+import { VideoAnalysisPanel, fmtClock } from '../components/VideoAnalysis';
 import { GameFormModal, PriorityFormModal } from './Games';
 
 export default function GameDetail() {
@@ -75,12 +76,11 @@ export default function GameDetail() {
       </div>
       {g.summary && <p className="mb-6 text-muted">{g.summary}</p>}
 
+      <VideoAnalysisPanel game={g} players={players} priorities={priorities} />
+
       <div className="grid gap-6 xl:grid-cols-[400px_1fr]">
         <div className="space-y-4">
           {canEdit && <ObservationForm gameId={g.id} players={players} priorities={priorities} />}
-          <NotYet phase="Phase 3">
-            <Video className="mr-1 inline h-3.5 w-3.5" /> Attaching video clips with timestamps and drawing annotations to observations.
-          </NotYet>
         </div>
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -121,6 +121,11 @@ export default function GameDetail() {
                               <span>
                                 {o.period ? `P${o.period}` : ''} {o.game_time}
                               </span>
+                            )}
+                            {o.video_ref && (
+                              <Badge tone="info">
+                                <Film className="h-3 w-3" /> {fmtClock(Number(o.video_ref.split('@')[1] ?? 0))}
+                              </Badge>
                             )}
                             {o.kind === 'issue' && <Badge tone={o.severity === 3 ? 'accent' : o.severity === 2 ? 'warn' : 'neutral'}>{['', 'Minor', 'Moderate', 'Major'][o.severity]}</Badge>}
                             {o.players.map((p) => (

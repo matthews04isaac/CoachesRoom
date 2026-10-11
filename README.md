@@ -82,7 +82,8 @@ Every push to `main` redeploys automatically.
 | Calendar: month grid + mobile agenda, practices & games pulled in automatically, tournaments/meetings/other events | ✅ |
 | Light / dark / system theme, responsive layouts, JSON data export | ✅ |
 | Animated tactical sequences | ⏳ Not yet — labelled in the app |
-| Video uploads, clip tagging, annotations, automated video analysis | ⏳ Phase 3 — labelled in the app; data model reserves `observations.video_ref` |
+| **AI game-video analysis:** paste a Google Drive or YouTube link (or upload a file) on a game; Gemini returns timestamped moments sorted into the observation categories, with jersey numbers matched to the roster; the coach keeps, edits or dismisses each one and kept moments become observations | ✅ with `GEMINI_API_KEY` (videos up to 2 GB; one per period recommended) |
+| Drawing annotations on video, clip library / playback for uploaded files | ⏳ Not yet |
 | Email invitations/notifications, photo & file uploads, organisation-level management, other sports | ⏳ Not yet |
 
 Nothing in the UI pretends to work: unfinished features are shown as clearly labelled "Not yet available" notes, never as dead buttons. The rule-based recommendations are labelled as rule-based, not AI.
@@ -99,6 +100,7 @@ server/
                          coaching (drills, practices, games, observations, priorities)
                          tactics (systems, playbook, diagrams, library) · ai (Gemini / Claude)
   ai-providers.ts        Google Gemini and Anthropic Claude clients behind one interface
+  video.ts               Game-video analysis jobs (Drive download → Gemini Files API → suggested moments)
   seed.ts, seed-library.ts  Demo team + BenchIQ drill/system/article library
   api.test.ts            API tests
 src/

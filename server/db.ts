@@ -241,6 +241,23 @@ CREATE TABLE IF NOT EXISTS resources (
   read_minutes INTEGER NOT NULL DEFAULT 4,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS video_analyses (
+  id INTEGER PRIMARY KEY,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  source TEXT NOT NULL,              -- drive | youtube | upload
+  source_url TEXT,
+  our_color TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL,              -- queued | downloading | uploading | processing | analyzing | done | failed
+  stage_message TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  footage_note TEXT NOT NULL DEFAULT '',
+  suggestions TEXT NOT NULL DEFAULT '[]', -- AI-suggested moments; each has status pending | accepted | dismissed
+  model TEXT,
+  error TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
 CREATE INDEX IF NOT EXISTS idx_obs_team ON observations(team_id, focus_area);
 CREATE INDEX IF NOT EXISTS idx_eval_player ON evaluations(player_id, evaluated_on);
@@ -256,10 +273,17 @@ export function openDb(file = process.env.BENCHIQ_DB ?? 'data/benchiq.db') {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 
 export type DB = DatabaseSync;
+
+/** Additive column migrations for databases created by earlier versions. */
+function migrate(db: DatabaseSync) {
+  const has = (table: string, col: string) => (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === col);
+  if (!has('games', 'video_url')) db.exec('ALTER TABLE games ADD COLUMN video_url TEXT');
+}
 
 /** Thin helpers so route code stays readable. */
 export function q(db: DB) {

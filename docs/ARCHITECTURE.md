@@ -50,7 +50,7 @@ Key decisions:
 - **Scheduled games** are `games` rows with a NULL score; recording the result is an edit, not a new record.
 - **Dates** are stored as local `YYYY-MM-DD` / `YYYY-MM-DDTHH:mm` strings. A 5:30 pm practice is 5:30 pm at the rink regardless of the viewer's time zone. (Multi-timezone organisations will need explicit time zones per team — noted for later.)
 - **JSON columns** are used for naturally document-shaped data (ratings, coaching points, diagrams, system steps) and validated on write.
-- **Video readiness:** `observations.video_ref` is reserved for Phase 3 clip references; no UI uses it yet.
+- **Video links:** observations created from AI video analysis store `video_ref` = `source@seconds` (e.g. `youtube@754`), and games store the analyzed `video_url`.
 
 ## The connected coaching loop
 
@@ -73,6 +73,20 @@ Player evaluations feed the same loop: the lowest-rated skills drive player dril
 - On Claude, requests use `medium` effort and server-side refusal fallbacks (`fallbacks: "default"`). On Gemini, safety blocks and the free tier's rate limits (HTTP 429) are surfaced as friendly messages. Without `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` the endpoint returns 503 and the UI explains how to enable it.
 - No automated video analysis exists, and the assistant is instructed not to invent statistics or observations.
 
+## AI game-video analysis
+
+`server/video.ts` + `server/routes/video.ts`, Gemini only (Claude can't watch video).
+
+1. On a game, the coach pastes a **Google Drive** link (sharing: *Anyone with the link*), a **YouTube** link, or **uploads** a file, plus their jersey colour.
+2. A background job (one per team at a time, to protect the free quota) records its stage on a `video_analyses` row; the page polls it. Jobs interrupted by a restart are marked failed on boot.
+   - Drive: the server streams the file from `drive.usercontent.google.com` to a temp file (HTML responses mean the file isn't shared publicly), then uploads it to the Gemini Files API in chunks, waits for processing, and deletes both copies afterwards.
+   - YouTube: the URL is passed straight to Gemini — nothing is downloaded.
+   - Upload: streamed to a temp file, then as Drive.
+3. Gemini (`gemini-flash-latest`, low media resolution to save tokens) gets the roster's jersey numbers and active priorities and returns JSON constrained by a schema: summary, footage note, and up to 40 moments (timestamp, focus area, issue/positive, severity, description, jersey numbers, confidence). The server validates and sorts them.
+4. Moments are stored as **pending suggestions**. Keeping one (optionally edited) creates a real observation — jersey numbers mapped to roster players, `video_ref` = `source@seconds`, optional priority link — so it flows into priorities, recommendations and trends. Dismissed ones are kept for reference.
+
+Limits: Gemini accepts up to 2 GB per file (the app checks before downloading and suggests splitting by period or exporting at 720p); the free tier's per-minute/day quotas surface as friendly messages; accuracy on subtle tactical reads and jersey numbers is imperfect, which is why nothing is saved without coach approval.
+
 ## Security
 
 - Passwords: scrypt with per-user salt, constant-time comparison. Minimum 8 characters.
@@ -93,6 +107,6 @@ Practice plans and player reports have dedicated print routes (`/practices/:id/p
 
 **Phase 2 (remaining):** animated tactical sequences (step interpolation between system diagrams), richer progress analytics (per-skill trends, team comparisons), calendar recurrence and iCal export, server-side PDF export, email invitations.
 
-**Phase 3:** video uploads with storage abstraction, manual clip tagging linked to observations (`video_ref`), drawing annotations on frames, automated tactical analysis only where technically credible, organisation-level management (clubs/associations with multiple teams and shared libraries), and a sport abstraction over the hockey-specific vocabulary in `shared/domain.ts`.
+**Phase 3:** server-side splitting/compression of full-game videos over 2 GB, a clip library with playback for uploaded files (needs paid storage), drawing annotations on frames, organisation-level management (clubs/associations with multiple teams and shared libraries), and a sport abstraction over the hockey-specific vocabulary in `shared/domain.ts`.
 
 **Scaling notes:** move from SQLite to Postgres when multi-instance hosting is needed (queries are plain SQL), add a migration tool (the current schema uses `CREATE TABLE IF NOT EXISTS`), and code-split the web bundle by route.
